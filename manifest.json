@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "TabGroupAutoHide",
+  "version": "1.0",
+  "permissions": [
+    "commands",
+    "tabs",
+    "tabGroups",
+    "storage"
+  ],
+  "commands": {
+    "TAH_NextTab": {
+      "description": "Focus the next tab, even if it's in a collapsed group."
+    },
+    "TAH_PreviousTab": {
+      "description": "Focus the previous tab, even if it's in a collapsed group."
+    },
+    "TAH_MoveTabRight": {
+      "description": "Move tab right. Might merge into the next group."
+    },
+    "TAH_MoveTabLeft": {
+      "description": "Move tab left. Might merge into the previous group."
+    },
+    "TAH_MoveTabGroupRight": {
+      "description": "Move tab group right."
+    },
+    "TAH_MoveTabGroupLeft": {
+      "description": "Move tab group left."
+    },
+    "TAH_OpenInCurrentGroup": {
+      "description": "Open tab in the current group."
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
