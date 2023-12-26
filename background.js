@@ -1,6 +1,6 @@
 chrome.runtime.onInstalled.addListener(function () {
   chrome.storage.sync.set({
-    defaultTabGroupName: "*",
+    defaultTabGroupName: "_",
   });
 });
 
@@ -78,6 +78,8 @@ async function OpenTabInCurrentGroup() {
     let defaultGroup = await chrome.tabGroups.query({
       title: data.defaultTabGroupName,
     });
+    console.log("in");
+    console.log(defaultGroup);
     if (defaultGroup.length == 1) {
       await chrome.tabs.group({
         tabIds: [newTab.id],
