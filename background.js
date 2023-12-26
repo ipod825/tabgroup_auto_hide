@@ -148,7 +148,7 @@ async function MoveTab(direction) {
 
   const neighborGroupId = tabs[neighborIndex].groupId;
   const tabGroupDifferent = currentTab.groupId != neighborGroupId;
-  if (tabGroupDifferent && neighborIndex != 0 && neighborGroupId != -1) {
+  if (tabGroupDifferent && neighborGroupId != -1) {
     neighborIndex -= direction;
   }
   chrome.tabs.move(currentTab.id, { index: neighborIndex });
