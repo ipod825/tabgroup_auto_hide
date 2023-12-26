@@ -10,6 +10,7 @@ function saveConfig() {
       // Optionally, provide feedback to the user that the configuration has been saved
     },
   );
+  window.close();
 }
 
 // Function to load user configuration from Chrome storage (if available)
