@@ -83,6 +83,7 @@ async function OpenTabInCurrentGroup() {
         tabIds: [newTab.id],
         groupId: defaultGroup[0].id,
       });
+      await collapseUnfocusedTabGroups();
     } else {
       let newGroupId = await chrome.tabs.group({
         tabIds: [newTab.id],
