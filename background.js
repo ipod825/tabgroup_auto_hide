@@ -18,11 +18,12 @@ chrome.commands.onCommand.addListener(function (command) {
   } else if (command === "TAH_MoveTabGroupLeft") {
     MoveTabGroup(-1);
   } else if (command === "TAH_OpenInCurrentGroup") {
-    OpenTabInCurrentGroup(-1);
+    OpenTabInCurrentGroup();
   }
 });
 
 chrome.tabs.onActivated.addListener(collapseUnfocusedTabGroups);
+chrome.tabs.onCreated.addListener(maybeMoveTabToDefaultGroup);
 
 async function collapseUnfocusedTabGroups(_activeInfo) {
   let currentTab = await getCurrentTab();
@@ -69,32 +70,39 @@ function findTabWithDifferentGroup(tabs, currentIndex, direction) {
   return res;
 }
 
+async function maybeMoveTabToDefaultGroup(tab) {
+  if (tab.groupId != -1) {
+    return;
+  }
+  const data = await chrome.storage.sync.get("defaultTabGroupName");
+  let defaultGroup = await chrome.tabGroups.query({
+    title: data.defaultTabGroupName,
+  });
+  if (defaultGroup.length == 1) {
+    await chrome.tabs.group({
+      tabIds: [tab.id],
+      groupId: defaultGroup[0].id,
+    });
+    await collapseUnfocusedTabGroups();
+  } else {
+    let newGroupId = await chrome.tabs.group({
+      tabIds: [tab.id],
+    });
+    await chrome.tabGroups.update(newGroupId, {
+      title: data.defaultTabGroupName,
+    });
+    await chrome.tabs.move(tab.id, {
+      index: -1,
+    });
+  }
+}
+
 async function OpenTabInCurrentGroup() {
   let currentTab = await getCurrentTab();
   let newTab = await chrome.tabs.create({ index: currentTab.index + 1 });
-  const data = await chrome.storage.sync.get("defaultTabGroupName");
 
   if (currentTab.groupId == -1) {
-    let defaultGroup = await chrome.tabGroups.query({
-      title: data.defaultTabGroupName,
-    });
-    if (defaultGroup.length == 1) {
-      await chrome.tabs.group({
-        tabIds: [newTab.id],
-        groupId: defaultGroup[0].id,
-      });
-      await collapseUnfocusedTabGroups();
-    } else {
-      let newGroupId = await chrome.tabs.group({
-        tabIds: [newTab.id],
-      });
-      await chrome.tabGroups.update(newGroupId, {
-        title: data.defaultTabGroupName,
-      });
-      await chrome.tabs.move(newTab.id, {
-        index: -1,
-      });
-    }
+    maybeMoveTabToDefaultGroup(newTab);
   } else {
     await chrome.tabs.group({
       tabIds: [newTab.id],
