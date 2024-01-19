@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabGroupAutoHide",
-  "version": "1.2",
+  "version": "1.3",
   "permissions": [
     "commands",
     "tabs",
@@ -26,9 +26,6 @@
     },
     "TAH_MoveTabGroupLeft": {
       "description": "Move tab group left."
-    },
-    "TAH_OpenInCurrentGroup": {
-      "description": "Open tab in the current group."
     }
   },
   "background": {
