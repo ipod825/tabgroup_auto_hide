@@ -29,6 +29,7 @@ chrome.tabs.onActivated.addListener(async function () {
     groupId: tab.groupId,
     id: tab.id,
   };
+  await collapseUnfocusedTabGroups();
 });
 
 chrome.tabs.onCreated.addListener(async function onCreatedHandler() {
