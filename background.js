@@ -1,27 +1,33 @@
-chrome.runtime.onInstalled.addListener(function () {
+chrome.runtime.onInstalled.addListener(async function () {
   chrome.storage.sync.set({
     defaultTabGroupName: "_",
   });
+  await updateLastTabId();
 });
 
-chrome.commands.onCommand.addListener(function (command) {
+chrome.commands.onCommand.addListener(async function (command) {
   if (command === "TAH_NextTab") {
-    FocusTab(1);
+    await FocusTab(1);
   } else if (command === "TAH_PreviousTab") {
-    FocusTab(-1);
+    await FocusTab(-1);
   } else if (command === "TAH_MoveTabRight") {
-    MoveTab(1);
+    await MoveTab(1);
   } else if (command === "TAH_MoveTabLeft") {
-    MoveTab(-1);
+    await MoveTab(-1);
   } else if (command === "TAH_MoveTabGroupRight") {
-    MoveTabGroup(1);
+    await MoveTabGroup(1);
   } else if (command === "TAH_MoveTabGroupLeft") {
-    MoveTabGroup(-1);
+    await MoveTabGroup(-1);
   }
 });
 
-let CREATE_COUNTER = 0;
 let LAST_TAB_ID = -1;
+async function updateLastTabId() {
+  const tab = await getCurrentTab();
+  LAST_TAB_ID = tab.id;
+}
+
+let CREATE_COUNTER = 0;
 chrome.tabs.onActivated.addListener(async function () {
   if (CREATE_COUNTER > 0) {
     CREATE_COUNTER -= 1;
@@ -30,11 +36,6 @@ chrome.tabs.onActivated.addListener(async function () {
   await updateLastTabId();
   await collapseUnfocusedTabGroups();
 });
-
-async function updateLastTabId() {
-  const tab = await getCurrentTab();
-  LAST_TAB_ID = tab.id;
-}
 
 chrome.tabs.onCreated.addListener(async function onCreatedHandler() {
   CREATE_COUNTER += 1;
