@@ -1,7 +1,10 @@
 {
   "manifest_version": 3,
+  "default_locale": "en",
   "name": "TabGroupAutoHide",
-  "version": "1.4",
+  "short_name": "TAH",
+  "description": "__MSG_package_info__",
+  "version": "1.5",
   "permissions": [
     "commands",
     "tabs",
@@ -10,22 +13,34 @@
   ],
   "commands": {
     "TAH_NextTab": {
-      "description": "Focus the right tab, even if it's in a collapsed group."
+      "suggested_key": {
+        "default": "Ctrl+L"
+      },
+      "description": "__MSG_TAH_NextTab__"
     },
     "TAH_PreviousTab": {
-      "description": "Focus the left tab, even if it's in a collapsed group."
+      "suggested_key": {
+        "default": "Ctrl+H"
+      },
+      "description": "__MSG_TAH_PreviousTab__"
     },
     "TAH_MoveTabRight": {
-      "description": "Move tab right. Might merge into the next group."
+      "suggested_key": {
+        "default": "Ctrl+Shift+L"
+      },
+      "description": "__MSG_TAH_MoveTabRight__"
     },
     "TAH_MoveTabLeft": {
-      "description": "Move tab left. Might merge into the previous group."
+      "suggested_key": {
+        "default": "Ctrl+Shift+H"
+      },
+      "description": "__MSG_TAH_MoveTabLeft__"
     },
     "TAH_MoveTabGroupRight": {
-      "description": "Move tab group right."
+      "description": "__MSG_TAH_MoveTabGroupRight__"
     },
     "TAH_MoveTabGroupLeft": {
-      "description": "Move tab group left."
+      "description": "__MSG_TAH_MoveTabGroupLeft__"
     }
   },
   "background": {

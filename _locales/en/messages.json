@@ -1,0 +1,23 @@
+{
+  "package_info": {
+    "message": "Provided tab and tab group keyboard utilitiy shortcuts and auto hide unfocused tab groups."
+  },
+  "TAH_NextTab": {
+    "message": "Focus the right tab, even if it's in a collapsed group."
+  },
+  "TAH_PreviousTab": {
+    "message": "Focus the left tab, even if it's in a collapsed group."
+  },
+  "TAH_MoveTabRight": {
+    "message": "Move tab right. Might merge into the next group."
+  },
+  "TAH_MoveTabLeft": {
+    "message": "Move tab left. Might merge into the previous group."
+  },
+  "TAH_MoveTabGroupRight": {
+    "message": "Move tab group right."
+  },
+  "TAH_MoveTabGroupLeft": {
+    "message": "Move tab group left."
+  }
+}
