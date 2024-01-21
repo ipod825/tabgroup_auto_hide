@@ -10,10 +10,10 @@
   ],
   "commands": {
     "TAH_NextTab": {
-      "description": "Focus the next tab, even if it's in a collapsed group."
+      "description": "Focus the right tab, even if it's in a collapsed group."
     },
     "TAH_PreviousTab": {
-      "description": "Focus the previous tab, even if it's in a collapsed group."
+      "description": "Focus the left tab, even if it's in a collapsed group."
     },
     "TAH_MoveTabRight": {
       "description": "Move tab right. Might merge into the next group."

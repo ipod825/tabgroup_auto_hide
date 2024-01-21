@@ -20,34 +20,40 @@ chrome.commands.onCommand.addListener(function (command) {
   }
 });
 
-let lastTabInfo = { groupId: -1, index: 1, id: -1 };
+let CREATE_COUNTER = 0;
+let LAST_TAB_ID = -1;
 chrome.tabs.onActivated.addListener(async function () {
-  await new Promise((r) => setTimeout(r, 1));
-  const tab = await getCurrentTab();
-  lastTabInfo = {
-    index: tab.index,
-    groupId: tab.groupId,
-    id: tab.id,
-  };
+  if (CREATE_COUNTER > 0) {
+    CREATE_COUNTER -= 1;
+    return;
+  }
+  await updateLastTabId();
   await collapseUnfocusedTabGroups();
 });
 
+async function updateLastTabId() {
+  const tab = await getCurrentTab();
+  LAST_TAB_ID = tab.id;
+}
+
 chrome.tabs.onCreated.addListener(async function onCreatedHandler() {
-  const localLastTabInfo = structuredClone(lastTabInfo);
+  CREATE_COUNTER += 1;
+  const lastTab = await chrome.tabs.get(LAST_TAB_ID);
   var tab = await getCurrentTab();
 
-  if (localLastTabInfo.groupId == -1) {
-    moveTabToDefaultGroup(tab);
+  if (lastTab.groupId == -1) {
+    await moveTabToDefaultGroup(tab);
   } else {
     await chrome.tabs.group({
       tabIds: [tab.id],
-      groupId: localLastTabInfo.groupId,
+      groupId: lastTab.groupId,
     });
     chrome.tabs.move(tab.id, {
-      index: localLastTabInfo.index + 1,
+      index: lastTab.index + 1,
     });
   }
 
+  await updateLastTabId();
   await collapseUnfocusedTabGroups();
 });
 
@@ -74,7 +80,7 @@ async function moveTabToDefaultGroup(tab) {
   }
 }
 
-async function collapseUnfocusedTabGroups(_activeInfo) {
+async function collapseUnfocusedTabGroups() {
   let currentTab = await getCurrentTab();
   let tabGroups = await chrome.tabGroups.query({});
   tabGroups.forEach((g) => {
