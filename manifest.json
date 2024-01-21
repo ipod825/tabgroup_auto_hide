@@ -13,27 +13,15 @@
   ],
   "commands": {
     "TAH_NextTab": {
-      "suggested_key": {
-        "default": "Ctrl+L"
-      },
       "description": "__MSG_TAH_NextTab__"
     },
     "TAH_PreviousTab": {
-      "suggested_key": {
-        "default": "Ctrl+H"
-      },
       "description": "__MSG_TAH_PreviousTab__"
     },
     "TAH_MoveTabRight": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+L"
-      },
       "description": "__MSG_TAH_MoveTabRight__"
     },
     "TAH_MoveTabLeft": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+H"
-      },
       "description": "__MSG_TAH_MoveTabLeft__"
     },
     "TAH_MoveTabGroupRight": {
