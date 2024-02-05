@@ -24,6 +24,9 @@ chrome.commands.onCommand.addListener(async function (command) {
 let LAST_TAB_ID = -1;
 async function updateLastTabId() {
   const tab = await getCurrentTab();
+  if (!("id" in tab)) {
+    return;
+  }
   LAST_TAB_ID = tab.id;
 }
 
@@ -43,30 +46,35 @@ chrome.tabs.onActivated.addListener(async function () {
 chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
   console.log("enter create", "lasttabid", LAST_TAB_ID, "tab.index", tab.index);
   CREATING = true;
-  const lastTab = await chrome.tabs.get(LAST_TAB_ID);
-  console.log(
-    "create running...",
-    "lasttabid",
-    LAST_TAB_ID,
-    "lastTab.index",
-    lastTab.index,
-  );
+  try {
+    const lastTab = await chrome.tabs.get(LAST_TAB_ID);
+    console.log(
+      "create running...",
+      "lasttabid",
+      LAST_TAB_ID,
+      "lastTab.index",
+      lastTab.index,
+    );
 
-  if (lastTab.groupId == -1) {
-    await moveTabToDefaultGroup(tab);
-  } else {
-    await chrome.tabs.move(tab.id, {
-      index: lastTab.index + 1,
-    });
-    await chrome.tabs.group({
-      tabIds: [tab.id],
-      groupId: lastTab.groupId,
-    });
+    if (lastTab.groupId == -1) {
+      await moveTabToDefaultGroup(tab);
+    } else {
+      await chrome.tabs.move(tab.id, {
+        index: lastTab.index + 1,
+      });
+      await chrome.tabs.group({
+        tabIds: [tab.id],
+        groupId: lastTab.groupId,
+      });
+    }
+
+    await updateLastTabId();
+    await collapseUnfocusedTabGroups();
+  } catch (error) {
+    console.log(error);
+  } finally {
+    CREATING = false;
   }
-
-  await updateLastTabId();
-  await collapseUnfocusedTabGroups();
-  CREATING = false;
 });
 
 async function moveTabToDefaultGroup(tab) {
