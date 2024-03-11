@@ -103,6 +103,9 @@ async function moveTabToDefaultGroup(tab) {
 async function collapseUnfocusedTabGroups() {
   let currentTab = await getCurrentTab();
   let tabGroups = await chrome.tabGroups.query({});
+  if (currentTab.groupId == -1) {
+    return;
+  }
   tabGroups.forEach((g) => {
     if (g.id != currentTab.groupId) {
       chrome.tabGroups.update(g.id, { collapsed: true });
