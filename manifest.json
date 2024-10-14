@@ -4,7 +4,7 @@
   "name": "TabGroupAutoHide",
   "short_name": "TAH",
   "description": "__MSG_package_info__",
-  "version": "1.7",
+  "version": "1.8",
   "permissions": [
     "commands",
     "tabs",
