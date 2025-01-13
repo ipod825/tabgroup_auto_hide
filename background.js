@@ -21,7 +21,7 @@ chrome.commands.onCommand.addListener(async function (command) {
   }
 });
 
-let debug = false;
+let debug = true;
 function ahLog(message, ...optionalParams) {
   if (debug) {
     console.log(message, ...optionalParams, new Error().stack.split("\n")[2]);
@@ -49,24 +49,28 @@ class MruTabs {
       return null;
     }
 
-    let tabId = null;
-    let tab = null;
-    let skipped = 0;
-    while (tab == null && this.cache.size > skipped) {
-      tabId = Array.from(this.cache.keys())[this.cache.size - 1];
-      tab = await safeGetTab(tabId);
-      if (tab == null || tab.windowId != this.windowId) {
+    const tabIds = Array.from(this.cache.keys()).reverse();
+
+    for (const tabId of tabIds) {
+      const tab = await safeGetTab(tabId);
+      ahLog("skipIf ", skipIf(tab), tab);
+
+      if (!tab || tab.windowId !== this.windowId) {
+        ahLog("deleting ", tabId, tab);
         this.cache.delete(tabId);
-        // Don't pick the tab if windowId mismatch.
-        tab = null;
-      } else if (skipIf && skipIf(tab)) {
-        skipped++;
+        continue;
       }
+
+      if (skipIf && skipIf(tab)) {
+        continue;
+      }
+
+      this.cache.delete(tabId);
+      this.cache.set(tabId, tab);
+      return tab;
     }
 
-    this.cache.delete(tabId);
-    this.cache.set(tabId, tab);
-    return tab;
+    return null;
   }
 
   put(tab) {
@@ -97,7 +101,7 @@ async function updateLastTabs(source) {
   const tab = await getCurrentTab();
   let lastTabs = await getCurrentWindowLastTabs();
   lastTabs.put(tab);
-  ahLog(`updateLastTabs ${source}`, lastTabs);
+  ahLog(`updateLastTabs ${source}`, tab, lastTabs);
 }
 
 chrome.tabs.onActivated.addListener(async function (tab) {
@@ -109,7 +113,17 @@ chrome.tabs.onActivated.addListener(async function (tab) {
 chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
   ahLog("onCreated", tab);
   const lastTabs = await getCurrentWindowLastTabs();
-  const lastTab = await lastTabs.get((tab) => tab.pinned);
+  const currentTab = await getCurrentTab();
+  // Skip if
+  // 1. The tab is pinned as we'll move lastTab right of the current tab but
+  // pinned tabs can't be moved.
+  // 2. The tab is the current tab. This handles the case where onActivated got
+  // triggered before onCreated which won't move the current tab because lastTab
+  // will be the same as the current tab.
+  ahLog(tab, currentTab);
+  const lastTab = await lastTabs.get(
+    (tab) => tab.id == currentTab.id || tab.pinned,
+  );
 
   ahLog("lastTab in onCreated", lastTab);
   if (lastTab == null) {
