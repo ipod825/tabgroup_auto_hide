@@ -1,8 +1,11 @@
+// background.js
+
+const storage = chrome.storage.session || chrome.storage.local;
+
 chrome.runtime.onInstalled.addListener(async function () {
   chrome.storage.sync.set({
     defaultTabGroupName: "_",
   });
-  await updateLastTabs("onInstalled");
 });
 
 chrome.commands.onCommand.addListener(async function (command) {
@@ -24,7 +27,9 @@ chrome.commands.onCommand.addListener(async function (command) {
 let debug = true;
 function ahLog(message, ...optionalParams) {
   if (debug) {
-    console.log(message, ...optionalParams, new Error().stack.split("\n")[2]);
+    const stack = new Error().stack;
+    const caller = stack ? stack.split("\n")[2] : "unknown";
+    console.log(message, ...optionalParams, caller);
   }
 }
 
@@ -36,146 +41,198 @@ async function safeGetTab(tabId) {
   }
 }
 
+async function getActiveTabInWindow(windowId) {
+  const [tab] = await chrome.tabs.query({ windowId: windowId, active: true });
+  return tab;
+}
+
+function getWindowKey(windowId) {
+  return `mru_tabs_${windowId}`;
+}
+
 class MruTabs {
   constructor(windowId, capacity) {
     this.windowId = windowId;
     this.capacity = capacity;
-    this.cache = new Map();
+  }
+
+  async _load() {
+    const key = getWindowKey(this.windowId);
+    const result = await storage.get(key);
+    return result[key] || [];
+  }
+
+  async _save(tabIds) {
+    const key = getWindowKey(this.windowId);
+    await storage.set({ [key]: tabIds });
   }
 
   async get(skipIf) {
-    ahLog(`MruTabs for window${this.windowId}\ntabs `, this.cache);
-    if (this.cache.size == 0) {
+    let tabIds = await this._load();
+    ahLog(`MruTabs for window${this.windowId}\ntabs `, tabIds);
+
+    if (tabIds.length === 0) {
       return null;
     }
 
-    const tabIds = Array.from(this.cache.keys()).reverse();
+    const reversedIds = [...tabIds].reverse();
+    let dirty = false;
 
-    for (const tabId of tabIds) {
+    for (const tabId of reversedIds) {
       const tab = await safeGetTab(tabId);
-      ahLog("skipIf ", skipIf(tab), tab);
 
       if (!tab || tab.windowId !== this.windowId) {
-        ahLog("deleting ", tabId, tab);
-        this.cache.delete(tabId);
+        ahLog("deleting stale tab", tabId);
+        tabIds = tabIds.filter((id) => id !== tabId);
+        dirty = true;
         continue;
       }
+
+      ahLog("skipIf check", skipIf ? skipIf(tab) : "none", tab);
 
       if (skipIf && skipIf(tab)) {
         continue;
       }
 
-      this.cache.delete(tabId);
-      this.cache.set(tabId, tab);
+      if (dirty) {
+        tabIds = tabIds.filter((id) => id !== tabId);
+      } else {
+        tabIds = tabIds.filter((id) => id !== tabId);
+      }
+      
+      tabIds.push(tabId);
+      await this._save(tabIds);
+      
       return tab;
+    }
+
+    if (dirty) {
+      await this._save(tabIds);
     }
 
     return null;
   }
 
-  put(tab) {
+  async put(tab) {
     if (!("index" in tab)) {
       return;
     }
-    let tabId = tab.id;
-    if (this.cache.has(tabId)) {
-      this.cache.delete(tabId);
-    } else if (this.cache.size >= this.capacity) {
-      this.cache.delete(this.cache.keys().next().value);
+    if (tab.windowId !== this.windowId) {
+      return;
     }
-    this.cache.set(tabId, tab);
+
+    const tabId = tab.id;
+    let tabIds = await this._load();
+
+    tabIds = tabIds.filter((id) => id !== tabId);
+    tabIds.push(tabId);
+
+    if (tabIds.length > this.capacity) {
+      tabIds.shift();
+    }
+
+    await this._save(tabIds);
   }
 }
 
-let LAST_TABS = new Map();
-async function getCurrentWindowLastTabs() {
-  let windowId = (await chrome.windows.getCurrent()).id;
-  if (!LAST_TABS.has(windowId)) {
-    LAST_TABS.set(windowId, new MruTabs(windowId, 10));
+// === NEW LOGIC: Default Tab Group ===
+async function checkAndMoveToDefaultGroup(tab) {
+  // Check if ANY tab groups exist in this specific window
+  const groups = await chrome.tabGroups.query({ windowId: tab.windowId });
+  
+  if (groups.length === 0) {
+    ahLog("No groups found in window, moving to default group", tab.id);
+    
+    // Get the preferred name from Sync storage (set via Popup)
+    const data = await chrome.storage.sync.get("defaultTabGroupName");
+    const groupName = data.defaultTabGroupName || "_";
+
+    // Create a new group for this tab
+    const newGroupId = await chrome.tabs.group({
+      tabIds: [tab.id],
+      createProperties: { windowId: tab.windowId }
+    });
+
+    // Name the group
+    await chrome.tabGroups.update(newGroupId, {
+      title: groupName,
+    });
   }
-  return LAST_TABS.get(windowId);
 }
 
-async function updateLastTabs(source) {
-  ahLog(`updateLastTabs ${source}`);
-  const tab = await getCurrentTab();
-  let lastTabs = await getCurrentWindowLastTabs();
-  lastTabs.put(tab);
-  ahLog(`updateLastTabs ${source}`, tab, lastTabs);
-}
+// === EVENT HANDLERS ===
 
-chrome.tabs.onActivated.addListener(async function (tab) {
-  ahLog("onActivated ", tab);
-  await updateLastTabs("onActivated");
-  await collapseUnfocusedTabGroups();
+chrome.tabs.onActivated.addListener(async function (activeInfo) {
+  ahLog("onActivated ", activeInfo);
+  
+  const tab = await safeGetTab(activeInfo.tabId);
+  if (tab) {
+    const mru = new MruTabs(activeInfo.windowId, 10);
+    await mru.put(tab);
+  }
+
+  await collapseUnfocusedTabGroups(activeInfo.windowId);
 });
 
 chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
   ahLog("onCreated", tab);
-  const lastTabs = await getCurrentWindowLastTabs();
-  const currentTab = await getCurrentTab();
-  // Skip if
-  // 1. The tab is pinned as we'll move lastTab right of the current tab but
-  // pinned tabs can't be moved.
-  // 2. The tab is the current tab. This handles the case where onActivated got
-  // triggered before onCreated which won't move the current tab because lastTab
-  // will be the same as the current tab.
-  ahLog(tab, currentTab);
-  const lastTab = await lastTabs.get(
-    (tab) => tab.id == currentTab.id || tab.pinned,
-  );
+  
+  const windowId = tab.windowId;
+  const mru = new MruTabs(windowId, 10);
+  
+  const currentActiveTab = await getActiveTabInWindow(windowId);
+  
+  // 1. Position Logic
+  if (currentActiveTab) {
+    const lastTab = await mru.get(
+      (t) => t.id == currentActiveTab.id || t.pinned,
+    );
 
-  ahLog("lastTab in onCreated", lastTab);
-  if (lastTab == null) {
-    return;
-  } else {
-    await chrome.tabs.move(tab.id, {
-      index: lastTab.index + 1,
-    });
-    if (lastTab.groupId != -1) {
-      await chrome.tabs.group({
-        tabIds: [tab.id],
-        groupId: lastTab.groupId,
+    ahLog("lastTab in onCreated", lastTab);
+    
+    if (lastTab != null) {
+      // Move next to last unpinned tab
+      await chrome.tabs.move(tab.id, {
+        index: lastTab.index + 1,
       });
+
+      // If last tab was in a group, join it
+      if (lastTab.groupId != -1) {
+        await chrome.tabs.group({
+          tabIds: [tab.id],
+          groupId: lastTab.groupId,
+        });
+      } else {
+        // If last tab was NOT in a group, check if we need to create the default group
+        await checkAndMoveToDefaultGroup(tab);
+      }
+    } else {
+      // No suitable last tab found, checking default group logic anyway
+      await checkAndMoveToDefaultGroup(tab);
     }
+  } else {
+    // Edge case: No active tab found? Just check default group logic
+    await checkAndMoveToDefaultGroup(tab);
   }
 
-  await updateLastTabs("onCreated");
-  await collapseUnfocusedTabGroups();
+  await collapseUnfocusedTabGroups(windowId);
 });
 
-async function moveTabToDefaultGroup(tab) {
-  const data = await chrome.storage.sync.get("defaultTabGroupName");
-  let defaultGroup = await chrome.tabGroups.query({
-    title: data.defaultTabGroupName,
-  });
-  if (defaultGroup.length == 1) {
-    await chrome.tabs.group({
-      tabIds: [tab.id],
-      groupId: defaultGroup[0].id,
-    });
-  } else {
-    let newGroupId = await chrome.tabs.group({
-      tabIds: [tab.id],
-    });
-    await chrome.tabGroups.update(newGroupId, {
-      title: data.defaultTabGroupName,
-    });
-    await chrome.tabs.move(tab.id, {
-      index: -1,
-    });
-  }
-}
+async function collapseUnfocusedTabGroups(windowId) {
+  const currentTab = await getActiveTabInWindow(windowId);
+  if (!currentTab) return;
 
-async function collapseUnfocusedTabGroups() {
-  let currentTab = await getCurrentTab();
-  let tabGroups = await chrome.tabGroups.query({});
+  const tabGroups = await chrome.tabGroups.query({ windowId: windowId });
+
   if (currentTab.groupId == -1) {
     return;
   }
+  
   tabGroups.forEach((g) => {
     if (g.id != currentTab.groupId) {
-      chrome.tabGroups.update(g.id, { collapsed: true });
+      if (!g.collapsed) {
+        chrome.tabGroups.update(g.id, { collapsed: true });
+      }
     }
   });
 }
@@ -188,8 +245,12 @@ async function getCurrentTab() {
   return currentTab;
 }
 
+// === COMMAND LOGIC ===
+
 async function FocusTab(direction) {
   let currentTab = await getCurrentTab();
+  if (!currentTab) return;
+
   const tabs = await chrome.tabs.query({ currentWindow: true });
   let index = 0;
   for (let i = 0; i < tabs.length; ++i) {
@@ -217,6 +278,8 @@ function findTabWithDifferentGroup(tabs, currentIndex, direction) {
 
 async function MoveTabGroup(direction) {
   let currentTab = await getCurrentTab();
+  if (!currentTab) return;
+
   if (currentTab.groupId == -1) {
     return MoveTab(direction);
   }
@@ -248,6 +311,8 @@ async function MoveTabGroup(direction) {
 
 async function MoveTab(direction) {
   let currentTab = await getCurrentTab();
+  if (!currentTab) return;
+
   const tabs = await chrome.tabs.query({ currentWindow: true });
   const curIndex = currentTab.index;
 
@@ -271,5 +336,6 @@ async function MoveTab(direction) {
       groupId: neighborGroupId,
     });
   }
-  await collapseUnfocusedTabGroups();
+  
+  await collapseUnfocusedTabGroups(currentTab.windowId);
 }
