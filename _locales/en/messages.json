@@ -46,5 +46,14 @@
   },
   "frozenGroupPrefix": {
     "message": "❄️ "
+  },
+  "popupStartBugReport": {
+    "message": "Start Bug Report"
+  },
+  "popupStopBugReport": {
+    "message": "Stop Bug Report"
+  },
+  "popupCopyBugReport": {
+    "message": "Copy Bug Report"
   }
 }

@@ -8,6 +8,10 @@ chrome.runtime.onInstalled.addListener(async function () {
     debug: false,
     autoHideDisabledGroupIds: [],
   });
+  chrome.storage.local.set({
+    bugReportLogs: [],
+    isBugReportActive: false,
+  });
 });
 
 
@@ -43,7 +47,16 @@ async function ahLog(message, ...optionalParams) {
   if (data.debug) {
     const stack = new Error().stack;
     const caller = stack ? stack.split("\n")[2] : "unknown";
+    const logMessage = `${new Date().toISOString()} - ${message} - ${JSON.stringify(optionalParams)} - ${caller}`;
     console.log(message, ...optionalParams, caller);
+
+    const localData = await chrome.storage.local.get("isBugReportActive");
+    if (localData.isBugReportActive) {
+      const logData = await chrome.storage.local.get("bugReportLogs");
+      const logs = logData.bugReportLogs || [];
+      logs.push(logMessage);
+      await chrome.storage.local.set({ bugReportLogs: logs });
+    }
   }
 }
 
@@ -384,6 +397,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true; // Indicates that the response is sent asynchronously
+  } else if (message.type === "getLogs") {
+    chrome.storage.local.get("bugReportLogs", function(data) {
+      sendResponse(data.bugReportLogs || []);
+    });
+    return true;
+  } else if (message.type === "clearLogs") {
+    chrome.storage.local.set({ bugReportLogs: [] });
+    return true;
   }
 });
 

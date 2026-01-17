@@ -20,6 +20,17 @@
       background-color: #d0e0ff;
       font-weight: bold;
     }
+    #bugReportBtn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #bugReportBtn.bug-report-active {
+      background-color: #dc3545;
+    }
   </style>
 </head>
 <body>
@@ -27,6 +38,9 @@
   <div>
     <input type="checkbox" id="debugCheckbox">
     <label for="debugCheckbox">__MSG_popupEnableDebug__</label>
+  </div>
+  <div>
+    <button id="bugReportBtn">__MSG_popupStartBugReport__</button>
   </div>
 
   <hr>
