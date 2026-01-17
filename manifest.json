@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "default_locale": "en",
-  "name": "TabGroupAutoHide",
+  "name": "__MSG_extName__",
   "short_name": "TAH",
-  "description": "__MSG_package_info__",
+  "description": "__MSG_extDescription__",
   "version": "2.1",
   "permissions": [
     "commands",
@@ -14,31 +14,31 @@
   ],
   "commands": {
     "TAH_NextTab": {
-      "description": "__MSG_TAH_NextTab__"
+      "description": "__MSG_commandNextTab__"
     },
     "TAH_PreviousTab": {
-      "description": "__MSG_TAH_PreviousTab__"
+      "description": "__MSG_commandPreviousTab__"
     },
     "TAH_MoveTabRight": {
-      "description": "__MSG_TAH_MoveTabRight__"
+      "description": "__MSG_commandMoveTabRight__"
     },
     "TAH_MoveTabLeft": {
-      "description": "__MSG_TAH_MoveTabLeft__"
+      "description": "__MSG_commandMoveTabLeft__"
     },
     "TAH_MoveTabGroupRight": {
-      "description": "__MSG_TAH_MoveTabGroupRight__"
+      "description": "__MSG_commandMoveTabGroupRight__"
     },
     "TAH_MoveTabGroupLeft": {
-      "description": "__MSG_TAH_MoveTabGroupLeft__"
+      "description": "__MSG_commandMoveTabGroupLeft__"
     },
     "TAH_SendTabToRightGroup": {
-      "description": "Send the current tab to the right tab group."
+      "description": "__MSG_commandSendTabToRightGroup__"
     },
     "TAH_SendTabToLeftGroup": {
-      "description": "Send the current tab to the left tab group."
+      "description": "__MSG_commandSendTabToLeftGroup__"
     },
     "TAH_ToggleAutoHideForCurrentGroup": {
-      "description": "Toggle auto-hide state of the current tab group."
+      "description": "__MSG_commandToggleAutoHide__"
     }
   },
   "background": {

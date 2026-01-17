@@ -378,20 +378,29 @@ async function sendTabToGroup(direction) {
   });
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "toggleAutoHide") {
+    toggleAutoHide(message.groupId).then(() => {
+      sendResponse({ success: true });
+    });
+    return true; // Indicates that the response is sent asynchronously
+  }
+});
+
 async function toggleAutoHide(groupId) {
   const data = await chrome.storage.sync.get("autoHideDisabledGroupIds");
   let autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
-
+  
   const group = await chrome.tabGroups.get(groupId);
   if (!group) return;
-
+  
   if (autoHideDisabledGroupIds.includes(groupId)) {
     // Unfreezing
     autoHideDisabledGroupIds = autoHideDisabledGroupIds.filter(id => id !== groupId);
     const originalColor = originalGroupColors.get(groupId) || 'blue'; // Default to blue
     await chrome.tabGroups.update(groupId, {
       color: originalColor,
-      title: group.title.replace("❄️ ", ""),
+      title: group.title.replace(chrome.i18n.getMessage("frozenGroupPrefix"), ""),
     });
     originalGroupColors.delete(groupId);
   } else {
@@ -400,10 +409,10 @@ async function toggleAutoHide(groupId) {
     originalGroupColors.set(groupId, group.color);
     await chrome.tabGroups.update(groupId, {
       color: 'grey',
-      title: `❄️ ${group.title}`,
+      title: `${chrome.i18n.getMessage("frozenGroupPrefix")}${group.title}`,
     });
   }
-
+  
   await chrome.storage.sync.set({ autoHideDisabledGroupIds });
 }
 

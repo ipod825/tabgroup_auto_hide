@@ -1,6 +1,7 @@
 // popup.js
 
 document.addEventListener("DOMContentLoaded", function() {
+  localizeHtmlPage();
   const debugCheckbox = document.getElementById("debugCheckbox");
 
   // Load debug setting
@@ -16,6 +17,26 @@ document.addEventListener("DOMContentLoaded", function() {
   // Load tab groups
   loadTabGroups();
 });
+
+function localizeHtmlPage() {
+  //Localize by replacing __MSG_***__ meta tags
+  var objects = document.getElementsByTagName('html');
+  for (var j = 0; j < objects.length; j++)
+  {
+      var obj = objects[j];
+
+      var valStrH = obj.innerHTML.toString();
+      var valNewH = valStrH.replace(/__MSG_(\w+)__/g, function(match, v1)
+      {
+          return v1 ? chrome.i18n.getMessage(v1) : "";
+      });
+
+      if(valNewH != valStrH)
+      {
+          obj.innerHTML = valNewH;
+      }
+  }
+}
 
 async function loadTabGroups() {
   const [tabGroups, data] = await Promise.all([
@@ -46,24 +67,10 @@ async function loadTabGroups() {
 }
 
 async function toggleAutoHide(groupId) {
-  const data = await chrome.storage.sync.get("autoHideDisabledGroupIds");
-  let autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
-
-  const groupDiv = document.querySelector(`[data-group-id="${groupId}"]`);
-
-  if (autoHideDisabledGroupIds.includes(groupId)) {
-    autoHideDisabledGroupIds = autoHideDisabledGroupIds.filter(id => id !== groupId);
-    if (groupDiv) {
-      groupDiv.classList.remove("auto-hide-disabled");
-    }
-  } else {
-    autoHideDisabledGroupIds.push(groupId);
-    if (groupDiv) {
-      groupDiv.classList.add("auto-hide-disabled");
-    }
-  }
-
-  await chrome.storage.sync.set({ autoHideDisabledGroupIds });
+  await chrome.runtime.sendMessage({
+    type: "toggleAutoHide",
+    groupId: groupId
+  });
   // Reload the list to reflect the changes
   loadTabGroups();
 }

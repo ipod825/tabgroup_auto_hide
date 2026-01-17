@@ -1,23 +1,50 @@
 {
-  "package_info": {
-    "message": "Provided tab and tab group keyboard utilitiy shortcuts and auto hide unfocused tab groups."
+  "extName": {
+    "message": "Tab Group Auto Hide"
   },
-  "TAH_NextTab": {
+  "extDescription": {
+    "message": "Automatically hides tab groups when you switch away from them."
+  },
+  "commandNextTab": {
     "message": "Focus the right tab, even if it's in a collapsed group."
   },
-  "TAH_PreviousTab": {
+  "commandPreviousTab": {
     "message": "Focus the left tab, even if it's in a collapsed group."
   },
-  "TAH_MoveTabRight": {
+  "commandMoveTabRight": {
     "message": "Move tab right. Might merge into the next group."
   },
-  "TAH_MoveTabLeft": {
+  "commandMoveTabLeft": {
     "message": "Move tab left. Might merge into the previous group."
   },
-  "TAH_MoveTabGroupRight": {
+  "commandMoveTabGroupRight": {
     "message": "Move tab group right."
   },
-  "TAH_MoveTabGroupLeft": {
+  "commandMoveTabGroupLeft": {
     "message": "Move tab group left."
+  },
+  "commandSendTabToRightGroup": {
+    "message": "Send the current tab to the right tab group."
+  },
+  "commandSendTabToLeftGroup": {
+    "message": "Send the current tab to the left tab group."
+  },
+  "commandToggleAutoHide": {
+    "message": "Toggle auto-hide state of the current tab group."
+  },
+  "popupTitle": {
+    "message": "Tab Group Settings"
+  },
+  "popupHeader": {
+    "message": "Tab Group Auto Hide Settings"
+  },
+  "popupEnableDebug": {
+    "message": "Enable Debug Logging"
+  },
+  "popupDisableAutoHide": {
+    "message": "Disable Auto-Hide for Groups"
+  },
+  "frozenGroupPrefix": {
+    "message": "❄️ "
   }
 }
