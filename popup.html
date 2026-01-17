@@ -7,27 +7,14 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
-    input[type="text"] {
-      width: 200px;
-      margin-bottom: 10px;
-    }
-    button {
-      padding: 8px 16px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #001bff;
-    }
-
   </style>
 </head>
 <body>
-  <h2>Default Tab Group Name</h2>
-  <input type="text" id="groupNameInput" placeholder="Enter default tab group name.">
-  <button id="saveButton">Save</button>
+  <h2>Tab Group Auto Hide Settings</h2>
+  <div>
+    <input type="checkbox" id="debugCheckbox">
+    <label for="debugCheckbox">Enable Debug Logging</label>
+  </div>
 
   <script src="popup.js"></script>
 </body>

@@ -4,9 +4,11 @@ const storage = chrome.storage.session || chrome.storage.local;
 
 chrome.runtime.onInstalled.addListener(async function () {
   chrome.storage.sync.set({
-    defaultTabGroupName: "_",
+    debug: false,
   });
 });
+
+
 
 chrome.commands.onCommand.addListener(async function (command) {
   if (command === "TAH_NextTab") {
@@ -24,9 +26,10 @@ chrome.commands.onCommand.addListener(async function (command) {
   }
 });
 
-let debug = true;
-function ahLog(message, ...optionalParams) {
-  if (debug) {
+
+async function ahLog(message, ...optionalParams) {
+  const data = await chrome.storage.sync.get("debug");
+  if (data.debug) {
     const stack = new Error().stack;
     const caller = stack ? stack.split("\n")[2] : "unknown";
     console.log(message, ...optionalParams, caller);
@@ -141,22 +144,7 @@ async function checkAndMoveToDefaultGroup(tab) {
   const groups = await chrome.tabGroups.query({ windowId: tab.windowId });
   
   if (groups.length === 0) {
-    ahLog("No groups found in window, moving to default group", tab.id);
-    
-    // Get the preferred name from Sync storage (set via Popup)
-    const data = await chrome.storage.sync.get("defaultTabGroupName");
-    const groupName = data.defaultTabGroupName || "_";
-
-    // Create a new group for this tab
-    const newGroupId = await chrome.tabs.group({
-      tabIds: [tab.id],
-      createProperties: { windowId: tab.windowId }
-    });
-
-    // Name the group
-    await chrome.tabGroups.update(newGroupId, {
-      title: groupName,
-    });
+    ahLog("Default tab group creation is disabled. Tab would have been moved to default group.", tab.id);
   }
 }
 
@@ -339,3 +327,5 @@ async function MoveTab(direction) {
   
   await collapseUnfocusedTabGroups(currentTab.windowId);
 }
+
+
