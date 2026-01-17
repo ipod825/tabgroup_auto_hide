@@ -23,6 +23,10 @@ chrome.commands.onCommand.addListener(async function (command) {
     await MoveTabGroup(1);
   } else if (command === "TAH_MoveTabGroupLeft") {
     await MoveTabGroup(-1);
+  } else if (command === "TAH_SendTabToRightGroup") {
+    await sendTabToGroup(1);
+  } else if (command === "TAH_SendTabToLeftGroup") {
+    await sendTabToGroup(-1);
   }
 });
 
@@ -326,6 +330,40 @@ async function MoveTab(direction) {
   }
   
   await collapseUnfocusedTabGroups(currentTab.windowId);
+}
+
+async function sendTabToGroup(direction) {
+  const currentTab = await getCurrentTab();
+  if (!currentTab) return;
+
+  const tabGroups = await chrome.tabGroups.query({ windowId: currentTab.windowId });
+  if (tabGroups.length < 2) return; // Need at least two groups to move between
+
+  // Sort groups by their position in the window
+  tabGroups.sort((a, b) => {
+    // To get the group's visual position, we can check the index of the first tab in it.
+    // This is an approximation. A more robust way might be needed if groups can be empty.
+    return a.id - b.id; // Fallback to sorting by id if index is not reliable.
+  });
+
+  const currentGroupIndex = tabGroups.findIndex(g => g.id === currentTab.groupId);
+  if (currentGroupIndex === -1) return; // Current tab is not in a group
+
+  let targetGroupIndex = currentGroupIndex + direction;
+
+  // Wrap around
+  if (targetGroupIndex < 0) {
+    targetGroupIndex = tabGroups.length - 1;
+  } else if (targetGroupIndex >= tabGroups.length) {
+    targetGroupIndex = 0;
+  }
+
+  const targetGroup = tabGroups[targetGroupIndex];
+
+  await chrome.tabs.group({
+    tabIds: [currentTab.id],
+    groupId: targetGroup.id,
+  });
 }
 
 

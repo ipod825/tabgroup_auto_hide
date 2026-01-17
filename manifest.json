@@ -4,7 +4,7 @@
   "name": "TabGroupAutoHide",
   "short_name": "TAH",
   "description": "__MSG_package_info__",
-  "version": "2.0",
+  "version": "2.1",
   "permissions": [
     "commands",
     "tabs",
@@ -29,6 +29,12 @@
     },
     "TAH_MoveTabGroupLeft": {
       "description": "__MSG_TAH_MoveTabGroupLeft__"
+    },
+    "TAH_SendTabToRightGroup": {
+      "description": "Send the current tab to the right tab group."
+    },
+    "TAH_SendTabToLeftGroup": {
+      "description": "Send the current tab to the left tab group."
     }
   },
   "background": {
