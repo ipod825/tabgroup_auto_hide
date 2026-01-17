@@ -1,10 +1,12 @@
 // background.js
 
 const storage = chrome.storage.session || chrome.storage.local;
+const originalGroupColors = new Map();
 
 chrome.runtime.onInstalled.addListener(async function () {
   chrome.storage.sync.set({
     debug: false,
+    autoHideDisabledGroupIds: [],
   });
 });
 
@@ -27,6 +29,11 @@ chrome.commands.onCommand.addListener(async function (command) {
     await sendTabToGroup(1);
   } else if (command === "TAH_SendTabToLeftGroup") {
     await sendTabToGroup(-1);
+  } else if (command === "TAH_ToggleAutoHideForCurrentGroup") {
+    const currentTab = await getCurrentTab();
+    if (currentTab && currentTab.groupId !== -1) {
+      await toggleAutoHide(currentTab.groupId);
+    }
   }
 });
 
@@ -214,14 +221,19 @@ async function collapseUnfocusedTabGroups(windowId) {
   const currentTab = await getActiveTabInWindow(windowId);
   if (!currentTab) return;
 
-  const tabGroups = await chrome.tabGroups.query({ windowId: windowId });
+  const [tabGroups, data] = await Promise.all([
+    chrome.tabGroups.query({ windowId: windowId }),
+    chrome.storage.sync.get("autoHideDisabledGroupIds"),
+  ]);
+
+  const autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
 
   if (currentTab.groupId == -1) {
     return;
   }
   
   tabGroups.forEach((g) => {
-    if (g.id != currentTab.groupId) {
+    if (g.id != currentTab.groupId && !autoHideDisabledGroupIds.includes(g.id)) {
       if (!g.collapsed) {
         chrome.tabGroups.update(g.id, { collapsed: true });
       }
@@ -364,6 +376,35 @@ async function sendTabToGroup(direction) {
     tabIds: [currentTab.id],
     groupId: targetGroup.id,
   });
+}
+
+async function toggleAutoHide(groupId) {
+  const data = await chrome.storage.sync.get("autoHideDisabledGroupIds");
+  let autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
+
+  const group = await chrome.tabGroups.get(groupId);
+  if (!group) return;
+
+  if (autoHideDisabledGroupIds.includes(groupId)) {
+    // Unfreezing
+    autoHideDisabledGroupIds = autoHideDisabledGroupIds.filter(id => id !== groupId);
+    const originalColor = originalGroupColors.get(groupId) || 'blue'; // Default to blue
+    await chrome.tabGroups.update(groupId, {
+      color: originalColor,
+      title: group.title.replace("❄️ ", ""),
+    });
+    originalGroupColors.delete(groupId);
+  } else {
+    // Freezing
+    autoHideDisabledGroupIds.push(groupId);
+    originalGroupColors.set(groupId, group.color);
+    await chrome.tabGroups.update(groupId, {
+      color: 'grey',
+      title: `❄️ ${group.title}`,
+    });
+  }
+
+  await chrome.storage.sync.set({ autoHideDisabledGroupIds });
 }
 
 

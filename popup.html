@@ -6,6 +6,19 @@
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      width: 250px;
+    }
+    .group-item {
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .group-item:hover {
+      background-color: #f0f0f0;
+    }
+    .group-item.auto-hide-disabled {
+      background-color: #d0e0ff;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -15,6 +28,11 @@
     <input type="checkbox" id="debugCheckbox">
     <label for="debugCheckbox">Enable Debug Logging</label>
   </div>
+
+  <hr>
+
+  <h2>Disable Auto-Hide for Groups</h2>
+  <div id="autoHideDisabledGroups"></div>
 
   <script src="popup.js"></script>
 </body>

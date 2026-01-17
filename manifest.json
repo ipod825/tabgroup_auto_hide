@@ -9,7 +9,8 @@
     "commands",
     "tabs",
     "tabGroups",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "commands": {
     "TAH_NextTab": {
@@ -35,6 +36,9 @@
     },
     "TAH_SendTabToLeftGroup": {
       "description": "Send the current tab to the left tab group."
+    },
+    "TAH_ToggleAutoHideForCurrentGroup": {
+      "description": "Toggle auto-hide state of the current tab group."
     }
   },
   "background": {
