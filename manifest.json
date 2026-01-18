@@ -4,7 +4,7 @@
   "name": "__MSG_extName__",
   "short_name": "TAH",
   "description": "__MSG_extDescription__",
-  "version": "2.1",
+  "version": "2.2",
   "permissions": [
     "commands",
     "tabs",
