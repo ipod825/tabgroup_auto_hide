@@ -42,6 +42,27 @@ chrome.commands.onCommand.addListener(async function (command) {
 });
 
 
+let isLogging = false;
+const logQueue = [];
+
+async function processLogQueue() {
+  if (isLogging || logQueue.length === 0) {
+    return;
+  }
+  isLogging = true;
+  const logMessage = logQueue.shift();
+  
+  try {
+    const logData = await chrome.storage.local.get("bugReportLogs");
+    const logs = logData.bugReportLogs || [];
+    logs.push(logMessage);
+    await chrome.storage.local.set({ bugReportLogs: logs });
+  } finally {
+    isLogging = false;
+    processLogQueue();
+  }
+}
+
 async function ahLog(message, ...optionalParams) {
   const data = await chrome.storage.sync.get("debug");
   if (data.debug) {
@@ -52,10 +73,8 @@ async function ahLog(message, ...optionalParams) {
 
     const localData = await chrome.storage.local.get("isBugReportActive");
     if (localData.isBugReportActive) {
-      const logData = await chrome.storage.local.get("bugReportLogs");
-      const logs = logData.bugReportLogs || [];
-      logs.push(logMessage);
-      await chrome.storage.local.set({ bugReportLogs: logs });
+      logQueue.push(logMessage);
+      processLogQueue();
     }
   }
 }
@@ -174,16 +193,18 @@ async function checkAndMoveToDefaultGroup(tab) {
 
 // === EVENT HANDLERS ===
 
-chrome.tabs.onActivated.addListener(async function (activeInfo) {
+chrome.tabs.onActivated.addListener(function (activeInfo) {
   ahLog("onActivated ", activeInfo);
   
-  const tab = await safeGetTab(activeInfo.tabId);
-  if (tab) {
-    const mru = new MruTabs(activeInfo.windowId, 10);
-    await mru.put(tab);
-  }
+  setTimeout(async () => {
+    const tab = await safeGetTab(activeInfo.tabId);
+    if (tab) {
+      const mru = new MruTabs(activeInfo.windowId, 10);
+      await mru.put(tab);
+    }
 
-  await collapseUnfocusedTabGroups(activeInfo.windowId);
+    await collapseUnfocusedTabGroups(activeInfo.windowId, tab);
+  }, 250);
 });
 
 chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
@@ -230,28 +251,56 @@ chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
   await collapseUnfocusedTabGroups(windowId);
 });
 
-async function collapseUnfocusedTabGroups(windowId) {
-  const currentTab = await getActiveTabInWindow(windowId);
-  if (!currentTab) return;
+async function collapseUnfocusedTabGroups(windowId, currentTab) {
+  ahLog('collapseUnfocusedTabGroups called with tab:', currentTab ? { id: currentTab.id, groupId: currentTab.groupId } : null);
 
-  const [tabGroups, data] = await Promise.all([
-    chrome.tabGroups.query({ windowId: windowId }),
-    chrome.storage.sync.get("autoHideDisabledGroupIds"),
-  ]);
+  if (!currentTab) {
+    ahLog('currentTab not provided, fetching active tab for window', windowId);
+    currentTab = await getActiveTabInWindow(windowId);
+  }
 
-  const autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
-
-  if (currentTab.groupId == -1) {
+  if (!currentTab) {
+    ahLog('No currentTab found, returning.');
     return;
   }
-  
-  tabGroups.forEach((g) => {
-    if (g.id != currentTab.groupId && !autoHideDisabledGroupIds.includes(g.id)) {
-      if (!g.collapsed) {
-        chrome.tabGroups.update(g.id, { collapsed: true });
+
+  ahLog('Processing with tab:', { id: currentTab.id, groupId: currentTab.groupId });
+
+  try {
+    const [tabGroups, data] = await Promise.all([
+      chrome.tabGroups.query({ windowId: windowId }),
+      chrome.storage.sync.get("autoHideDisabledGroupIds"),
+    ]);
+
+    const autoHideDisabledGroupIds = data.autoHideDisabledGroupIds || [];
+    ahLog('Found tabGroups:', tabGroups.map(g => g.id));
+    ahLog('Disabled groups:', autoHideDisabledGroupIds);
+
+    if (currentTab.groupId == -1) {
+      ahLog('Current tab is not in a group, returning.');
+      return;
+    }
+    
+    for (const g of tabGroups) {
+      const shouldCollapse = g.id != currentTab.groupId && !autoHideDisabledGroupIds.includes(g.id);
+      ahLog(`Group ${g.id}: current_group=${currentTab.groupId}, is_disabled=${autoHideDisabledGroupIds.includes(g.id)}, should_collapse=${shouldCollapse}`);
+      if (shouldCollapse) {
+        if (!g.collapsed) {
+          try {
+            ahLog(`Collapsing group ${g.id}`);
+            await chrome.tabGroups.update(g.id, { collapsed: true });
+            ahLog(`Successfully collapsed group ${g.id}`);
+          } catch (error) {
+            ahLog(`Error collapsing group ${g.id}:`, error.message);
+          }
+        } else {
+          ahLog(`Group ${g.id} is already collapsed.`);
+        }
       }
     }
-  });
+  } catch (error) {
+    ahLog('Error in collapseUnfocusedTabGroups:', error.message, error.stack);
+  }
 }
 
 async function getCurrentTab() {
