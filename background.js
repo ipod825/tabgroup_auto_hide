@@ -193,18 +193,26 @@ async function checkAndMoveToDefaultGroup(tab) {
 
 // === EVENT HANDLERS ===
 
+let collapseTimer = null;
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   ahLog("onActivated ", activeInfo);
-  
-  setTimeout(async () => {
+
+  // Update MRU immediately
+  (async () => {
     const tab = await safeGetTab(activeInfo.tabId);
     if (tab) {
       const mru = new MruTabs(activeInfo.windowId, 10);
       await mru.put(tab);
     }
+  })();
 
-    await collapseUnfocusedTabGroups(activeInfo.windowId, tab);
-  }, 250);
+  // Debounce collapse logic
+  clearTimeout(collapseTimer);
+  collapseTimer = setTimeout(async () => {
+    // When the timer fires, get the CURRENT active tab, not from the closure.
+    const currentTab = await getActiveTabInWindow(activeInfo.windowId);
+    await collapseUnfocusedTabGroups(activeInfo.windowId, currentTab);
+  }, 250); // Keep delay to allow for group changes to settle.
 });
 
 chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
