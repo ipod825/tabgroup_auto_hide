@@ -2,6 +2,7 @@
 
 const storage = chrome.storage.session || chrome.storage.local;
 const originalGroupColors = new Map();
+const lastBackgroundTabIdPerWindow = new Map();
 
 chrome.runtime.onInstalled.addListener(async function () {
   chrome.storage.sync.set({
@@ -194,8 +195,13 @@ async function checkAndMoveToDefaultGroup(tab) {
 // === EVENT HANDLERS ===
 
 let collapseTimer = null;
+chrome.windows.onRemoved.addListener((windowId) => {
+  lastBackgroundTabIdPerWindow.delete(windowId);
+});
+
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   ahLog("onActivated ", activeInfo);
+  lastBackgroundTabIdPerWindow.delete(activeInfo.windowId);
 
   // Update MRU immediately
   (async () => {
@@ -220,39 +226,51 @@ chrome.tabs.onCreated.addListener(async function onCreatedHandler(tab) {
   
   const windowId = tab.windowId;
   const mru = new MruTabs(windowId, 10);
-  
   const currentActiveTab = await getActiveTabInWindow(windowId);
   
-  // 1. Position Logic
-  if (currentActiveTab) {
-    const lastTab = await mru.get(
-      (t) => t.id == currentActiveTab.id || t.pinned,
-    );
+  let targetTab = null;
 
-    ahLog("lastTab in onCreated", lastTab);
-    
-    if (lastTab != null) {
-      // Move next to last unpinned tab
-      await chrome.tabs.move(tab.id, {
-        index: lastTab.index + 1,
-      });
-
-      // If last tab was in a group, join it
-      if (lastTab.groupId != -1) {
-        await chrome.tabs.group({
-          tabIds: [tab.id],
-          groupId: lastTab.groupId,
-        });
-      } else {
-        // If last tab was NOT in a group, check if we need to create the default group
-        await checkAndMoveToDefaultGroup(tab);
+  if (tab.active) {
+    lastBackgroundTabIdPerWindow.delete(windowId);
+    if (currentActiveTab) {
+      targetTab = await mru.get(
+        (t) => t.id == currentActiveTab.id || t.pinned,
+      );
+    }
+  } else {
+    if (currentActiveTab) {
+      targetTab = currentActiveTab;
+      const lastBgTabId = lastBackgroundTabIdPerWindow.get(windowId);
+      if (lastBgTabId) {
+        const lastBgTab = await safeGetTab(lastBgTabId);
+        if (lastBgTab && lastBgTab.windowId === windowId) {
+          targetTab = lastBgTab;
+        }
       }
+      lastBackgroundTabIdPerWindow.set(windowId, tab.id);
+    }
+  }
+
+  ahLog("targetTab in onCreated", targetTab);
+  
+  if (targetTab != null) {
+    // Move next to target tab
+    await chrome.tabs.move(tab.id, {
+      index: targetTab.index + 1,
+    });
+
+    // If target tab was in a group, join it
+    if (targetTab.groupId != -1) {
+      await chrome.tabs.group({
+        tabIds: [tab.id],
+        groupId: targetTab.groupId,
+      });
     } else {
-      // No suitable last tab found, checking default group logic anyway
+      // If target tab was NOT in a group, check if we need to create the default group
       await checkAndMoveToDefaultGroup(tab);
     }
   } else {
-    // Edge case: No active tab found? Just check default group logic
+    // No suitable target tab found, checking default group logic anyway
     await checkAndMoveToDefaultGroup(tab);
   }
 
